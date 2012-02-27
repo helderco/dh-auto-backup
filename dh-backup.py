@@ -4,7 +4,7 @@
 # Dreamhost Auto Backup - version 0.1
 # https://github.com/helderco/dh-auto-backup
 #
-# Copyright (c) 2012 Helder Correia
+# Copyright (c) 2012 Helder Correia <helder.mc@gmail.com>
 # All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a

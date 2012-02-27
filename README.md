@@ -2,7 +2,7 @@
 
 Good backup systems need to be automatic. I needed a simple script to backup all mysql databases and user files on my Dreamhost account. This is my attempt to automate this process as much as possible.
 
-You can read more from Dreamhost's Personal Backups at <http://wiki.dreamhost.com/Personal_Backup>
+You can read more from Dreamhost's Personal Backups at <http://wiki.dreamhost.com/Personal_Backup>.
 
 *Note: this script is yet under the early stages of development. All planned features are recorded in the [issues section](https://github.com/helderco/dh-auto-backup/issues?milestone=1). See how you can contribute below.*
 
@@ -10,9 +10,7 @@ You can read more from Dreamhost's Personal Backups at <http://wiki.dreamhost.co
 ## Requirements
 
 * Activate your dreamhost [backups user account](http://wiki.dreamhost.com/Personal_Backup);
-
 * Set up [passwordless login](http://wiki.dreamhost.com/Ssh#Passwordless_Login) between your main account and the backups server;
-
 * Create an [API](http://wiki.dreamhost.com/Api) key with the following functions:
   [user-list_users](http://wiki.dreamhost.com/Api#user-list_users),
   [mysql-list_users](http://wiki.dreamhost.com/Api#mysql-list_users);
@@ -51,7 +49,7 @@ The whole idea is to make the script run daily or at another set period. Create 
 I'm interested in community improvements, so be free to [contribute](http://help.github.com/send-pull-requests/). You can also submit feature requests and report any issues or bugs with the script in the [issues section](https://github.com/helderco/dh-auto-backup/issues).
 
 
-## Guidelines
+### Guidelines
 
 I'm taking a few guidelines in consideration for writing this script.
 
