@@ -20,24 +20,43 @@ I also recommend creating a separate mysql user with only `SELECT` permissions a
 
 ## Usage
 
-Download the script and put it anywhere you want.
+1. Download the script and put it anywhere you want.
 
-Edit the file and replace `key` with your Dreamhost API key, `db_user` and `db_pass` with your mysql backups user access  as recommended above, and `backup_dir` with the location where the mysql backups should be saved (relative to the script or absolute).
+2. Provide the script with a mysql user and password to backup the databases the user has access to (see my recommendation above for a dedicated backups user).
 
-### To run with default python from Dreamhost
+Optionally provide a local directory where dumps should be saved (defaults to `~/backups/mysql`).
 
-Make sure it's executable
+## Example
 
-`$ chmod u+x path/to/script`
+The following commands are provided as examples. You should replace names accordingly.
 
-Run directly
+### Download
 
-`$ path/to/script`
+    mkdir -p scripts
+    cd scripts
+    git clone https://github.com/helderco/dh-auto-backup.git
 
-### To run with a different python binary
+### Run from anywhere
 
-`$ path/to/python path/to/script`
+If you already have a `$PATH` accessible folder in your home, skip the first two commands.
 
+    mkdir -p ~/bin
+    echo 'export PATH="$PATH:~/bin"' >> ~/.bash_profile
+
+    ln -s ~/scripts/dh-auto-backup/dhbackup.py ~/bin/dhbackup
+
+### Usage: see available options
+
+    dhbackup -h
+
+### Usage: backup
+
+    dhbackup -u user_backups -p s3cr3tp4 6SHU5P2HLDAYECUM
+
+### Update
+
+    cd ~/scripts/dh-auto-backup
+    git pull
 
 ## Make it run automatically
 
@@ -53,7 +72,7 @@ I'm interested in community improvements, so be free to [contribute](http://help
 
 I'm taking a few guidelines in consideration for writing this script.
 
-* Make it compatible with Python 2.5, since at this time it's what you have by default from Dreamhost.
+* Make it compatible with Python 2.5, since at this time it's what you have by default.
 * Avoid as much as possible external dependencies. This way the user doesn't need to install anything else.
 * Make it a single script:
   * freedom to move the file around without having to have a group of files  under the same subdirectory;
