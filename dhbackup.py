@@ -14,7 +14,7 @@ script. If not, go to https://github.com/helderco/dh-auto-backup for
 more information.
 """
 
-__version__ = '0.2'
+__version__ = '0.3'
 
 __copyright__ = """
 Copyright (c) 2012 Helder Correia <helder.mc@gmail.com>
@@ -33,6 +33,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+_title = "Dreamhost Auto Backup"
+
+_copyright_short = """
+Copyright (c) 2012 Helder Correia
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+"""
+
 import os
 import sys
 import time
@@ -42,6 +51,7 @@ from urllib2 import urlopen
 from subprocess import Popen, PIPE
 from bz2 import BZ2File
 from optparse import OptionParser, OptionGroup
+from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
 
 
 class DreamhostAPI(object):
@@ -79,6 +89,12 @@ class Response(object):
 
         return True
 
+    def filter(self, prop):
+        result = []
+        for item in self.data:
+            result.append(item[prop])
+        return result
+
     def list(self, prop, value, return_prop=None):
         result = []
         for item in self.data:
@@ -94,133 +110,190 @@ class Response(object):
         return repr(self.raw)
 
 
-def mysqldump(db, archive=''):
-    """Backup a database to disk using mysqldump, and compress with bzip2.
+class Backup(object):
+    def __init__(self, api, config):
+        self.api = api
+        self.config = config
 
-    Expected keys in `db` dictionary:
-      - db (database name)
-      - home (host)
-      - username
-      - password
+    def mysql(self):
+        users = api.request('mysql-list_users')
+        if not users.success:
+            return False
 
-    These keys come from the Dreamhost API, but the password needs to be added.
-    """
-    sql_file = archive + db['db'] + '.' + time.strftime('%w') + '.sql'
+        print "Backing up databases..."
 
-    # Usually you simply do: mysqldump [args] | bzip2 > file, but I
-    # want to avoid writing empty files in case of an error from mysqldump
-    dump = "mysqldump -c -u%(username)s -p%(password)s -h%(home)s %(db)s" % db
+        done = set()
+        for db in users.data:
+            if db['db'] in done:
+                continue
+            password = config.get('mysql_users', db['username'])
+            if password:
+                db.update(password=password)
+                self.dump(db, config.mysql_dir) and done.add(db['db'])
 
-    process = Popen(dump, stdout=PIPE, stderr=PIPE, shell=True)
-    (out, err) = process.communicate()
-
-    if not err:
-        bz2_file = compress(sql_file, out)
-        print db['db'] + " was backed up successfully to " + bz2_file + "."
-        return True
-
-    print >> sys.stderr, ("warning: An error occurred while attempting to"
-                          "backup %s to %s.\n--> %s" %
-                          db['db'], sql_file, err)
-    return False
+        for db in set(users.filter('db')).difference(done):
+            print "warning: could not find authentication for database %s" % db
 
 
-def compress(file, content):
+    def dump(self, db, to):
+        """Backup a database to disk using mysqldump, and compress with bzip2.
+
+        Expected keys in `db` dictionary:
+          - db (database name)
+          - home (host)
+          - username
+          - password
+
+        These keys come from the Dreamhost API, but the password needs to be
+        added.
+        """
+        path = os.path.join(to, '')
+        sql_file = path + db['db'] + '.w' + time.strftime('%w') + '.sql'
+
+        # Usually you simply do: mysqldump [args] | bzip2 > file, but I
+        # want to avoid writing empty files in case of an error from mysqldump
+        dump = "mysqldump -c -u%(username)s -p%(password)s -h%(home)s %(db)s" % db
+
+        process = Popen(dump, stdout=PIPE, stderr=PIPE, shell=True)
+        (out, err) = process.communicate()
+
+        if not err:
+            bz2_file = compress_file(sql_file, out)
+            print db['db'] + " was backed up successfully to " + bz2_file + "."
+            return True
+
+        print >> sys.stderr, (
+            "warning: An error occurred while attempting to backup %s." %
+            db['db'])
+        print >> sys.stderr, "--> %s" % err
+        return False
+
+
+def compress_file(file, content):
     """Compresses `content` with bzip2 into a file with name `file`.bz2"""
-    file += '.bz2'
+    file = os.path.expanduser(file) + '.bz2'
+    (path, filename) = os.path.split(file)
+    if not os.path.exists(path):
+        os.makedirs(path)
     bz2 = BZ2File(file, 'wb')
     bz2.write(content)
     bz2.close()
-    return file
+    return collapseuser(file)
 
 
-class Arguments(OptionParser):
-    """Define and parse command line arguments."""
-
-    class Group(OptionGroup):
-        def add_option(self, *args, **kwargs):
-            if kwargs.has_key('default') and kwargs.has_key('help'):
-                kwargs['help'] += " (defaults to %default)"
-            OptionGroup.add_option(self, *args, **kwargs)
+def collapseuser(file):
+    return file.replace(os.path.expanduser('~'), '~')
 
 
-    def print_copy(self):
-        """Print copyright and license notice."""
-        print "Dreamhost Auto Backup, v%s" % self.get_version()
-        print "Copyright (C) 2012  Helder Correia"
-        print "This program comes with ABSOLUTELY NO WARRANTY."
-        print "This is free software, and you are welcome to redistribute"
-        print "it under certain conditions; see source for details."
-        print
+class Config(SafeConfigParser, OptionParser):
+    def __init__(self, args=None):
+        SafeConfigParser.__init__(self)
+        OptionParser.__init__(self, version=__version__)
+
+        self.set_description(
+            "This command line interface provide basic functionality. For"
+            " more flexibility and options, create a configuration file."
+            " Note that any options provided through this interface take"
+            " precedence over any file configurations, thus overriding them."
+            " See README file for more details.")
+
+        self._add_options()
+        self.parse_args(args)
+
+    def print_version(self, file=None):
+        print >> file, _title, self.get_version()
+        print >> file, _copyright_short
 
     def print_usage(self, file=None):
         print >> file, "usage: " + self.expand_prog_name(self.usage)
         print >> file, "use option -h or --help for more information."
 
-    def print_help(self, file=None):
-        self.print_copy()
-        OptionParser.print_help(self, file)
-
-    def __init__(self, *args, **kwargs):
-        kwargs.setdefault('version', __version__)
-        OptionParser.__init__(self, *args, **kwargs)
-        self.usage = "%prog [options] api_key"
-        self._add_options()
-
     def _add_options(self):
-        mysql = self.Group(self, "MySQL backup options")
+        self.add_option("-v", "--verbose", action="store_true",
+            help="show more information during the backup process")
 
-        mysql.add_option("-u", "--mysql-user",
-            dest="mysql_user", metavar="USER",
+        self.add_option("-c", "--config-file", metavar="FILE",
+            help="alternate configuration file to use")
+
+        general = OptionGroup(self, "General options")
+        general.add_option("-k", "--key", help="dreamhost's API key")
+        self.add_option_group(general)
+
+        mysql = OptionGroup(self, "MySQL options")
+
+        mysql.add_option("-u", "--mysql-user", metavar="USER",
             help="the mysql username to use for backing up databases")
 
-        mysql.add_option("-p", "--mysql-pass",
-            dest="mysql_pass", metavar="PASS",
+        mysql.add_option("-p", "--mysql-pass", metavar="PASS",
             help="the mysql password for the backups user")
 
-        mysql.add_option("-d", "--backup-dir",
-            dest="backup_dir", metavar="DIR", default="~/backups/mysql",
-            help="the local dir where the mysql dumps should be saved")
+        mysql.add_option("-d", "--mysql-dir", metavar="DIR",
+            help=("save the mysql backup files to this directory"
+                  " (defaults to ~/backups/mysql)"))
 
         self.add_option_group(mysql)
 
-    def parse_args(self, *args, **kwargs):
-        (options, args) = OptionParser.parse_args(self, *args, **kwargs)
+    def check_values(self, values, args):
+        """Called just after parse_args()."""
 
-        if len(args) != 1:
+        self.parse_files(values.config_file)
+        self.set('general', 'key', values.key)
+        self.set('general', 'verbose', values.verbose)
+
+        if not self.key:
             self.error("no api key provided")
 
-        if not options.mysql_user and not options.mysql_pass:
-            self.error("no mysql user authentication provided")
+        self.set('general', 'mysql_dir', values.mysql_dir, '~/backups/mysql')
 
-        if options.mysql_user and not options.mysql_pass:
-            self.error(
-                "no mysql password provided for user " + options.mysql_user)
+        if values.mysql_user and values.mysql_pass:
+            self.set('mysql_users', values.mysql_user, values.mysql_pass)
 
-        if not options.mysql_user and options.mysql_pass:
-            self.warning("no mysql user given, ignoring password")
-            options.mysql_pass = None
+        if values.verbose:
+            if values.mysql_user and not values.mysql_pass:
+                self.warning("missing mysql password. Ignoring user.")
+            if values.mysql_pass and not values.mysql_user:
+                self.warning("missing mysql user. Ignoring password.")
 
-        return args[0], options
+
+    def parse_files(self, additional=''):
+        path = os.path.splitext(os.path.realpath(__file__))[0]
+
+        (basepath, name) = os.path.split(path)
+
+        locations = [("%s.cfg" % path), ("~/.%s" % name), str(additional)]
+        locations = map(os.path.expanduser, locations)
+
+        self.files_parsed = self.read(locations)
+
+    def get(self, section, option, override=None, default=None):
+        kwargs = {}
+        if override is not None:
+            kwargs = {'vars': {option: override}}
+        try:
+            return SafeConfigParser.get(self, section, option, **kwargs)
+        except (NoSectionError, NoOptionError):
+            return override or default
+
+    def set(self, section, option, value, default=None):
+        if value is None:
+            value = default
+        if value is not None:
+            SafeConfigParser.set(self, section, option, value)
+
+    def __getattr__(self, item):
+        return self.get('general', item)
 
     def warning(self, msg):
         """Similar to error, but does not exit."""
         self.print_usage(sys.stderr)
-        print >> sys.stderr, "%s: warning: %s" % (self.get_prog_name(), msg)
+        print >> sys.stderr, "%s: warning: %s" % (
+            self.get_prog_name(), msg)
 
 
 if __name__ == '__main__':
-    key, options = Arguments().parse_args()
+    config = Config()
 
-    api = DreamhostAPI(key)
-    mysql_users = api.request('mysql-list_users')
+    api = DreamhostAPI(config.key)
+    backup = Backup(api, config)
 
-    if mysql_users.success and options.mysql_user and options.mysql_pass:
-        print "Backing up databases..."
-        if not os.path.exists(options.backup_dir):
-            os.makedirs(options.backup_dir)
-
-        for db in mysql_users.list('username', options.mysql_user):
-            db.update(password=options.mysql_pass)
-            mysqldump(db, options.backup_dir)
-
+    backup.mysql()

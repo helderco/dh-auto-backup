@@ -1,0 +1,42 @@
+;;;;;;;;;;;;;;;;;;;
+; About this file ;
+;;;;;;;;;;;;;;;;;;;
+; Example of valid configuration options for Dreamhost Auto Backup
+; script (dhbackup.py). Use this file as a guide to creating your
+; own configuration.
+;
+;;;;;;;;;;;;;;;;
+; Installation ;
+;;;;;;;;;;;;;;;;
+; Three locations are searched for the existence and loading of
+; configuration file options. Copy this file to any of the
+; following locations and file names:
+;
+; 1. dhbackup.cfg (next to the dhbackup.py file)
+; 2. .dhbackup (in your $HOME directory)
+; 3. alternate file provided as an argument to the script with 
+;    the `-c` or `--config-file=` option
+;
+; Lines started with a semi-colon are ignored by the script. Remove
+; it add it to activate/deactivate an option.
+
+
+[general]
+
+; Dreamhost API key.
+; Get yours at https://panel.dreamhost.com/?tree=home.api
+key: 6SHU5P2HLDAYECUM
+
+; Directory where the mysql dump files should be saved. Defaults
+; to ~/backups/mysql, so only needs to be defined when a different
+; directory is preferred.
+;mysql_dir: ~/backups/mysql
+
+
+[mysql_users]
+
+; This section provides a list of `user: password` combinations to
+; use for mysql authentication when dumping databases to files.
+
+mysql_user1: s3cr3tp4
+mysql_user2: p4ssw0rd
