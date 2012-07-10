@@ -14,11 +14,11 @@
 ;
 ; 1. dhbackup.cfg (next to the dhbackup.py file)
 ; 2. .dhbackup (in your $HOME directory)
-; 3. alternate file provided as an argument to the script with 
+; 3. alternate file provided as an argument to the script with
 ;    the `-c` or `--config-file=` option
 ;
 ; Lines started with a semi-colon are ignored by the script. Remove
-; it add it to activate/deactivate an option.
+; it or add it to activate/deactivate an option.
 
 
 [general]
@@ -27,16 +27,23 @@
 ; Get yours at https://panel.dreamhost.com/?tree=home.api
 key: 6SHU5P2HLDAYECUM
 
-; Directory where the mysql dump files should be saved. Defaults
-; to ~/backups/mysql, so only needs to be defined when a different
-; directory is preferred.
-;mysql_dir: ~/backups/mysql
+; Local directory where the mysql dump files should be saved. Defaults
+; to `backups/mysql`, so only needs to be defined when a different
+; directory is preferred (e.g. tmp/dumps). Path should be relative
+; to your $HOME, so don't provide absolute paths, including `~`.
+;mysql_dir: backups/mysql
 
 
 [mysql_users]
 
 ; This section provides a list of `user: password` combinations to
 ; use for mysql authentication when dumping databases to files.
+;
+; Remember that um can create a special mysql user for backups
+; with SELECT permissions and add it to any database you want
+; to backup. This allows for less maintenance (you won't have
+; to edit this file and add any new users), and also less pass-
+; words would be exposed here, if you have security concerns.
 
 mysql_user1: s3cr3tp4
 mysql_user2: p4ssw0rd
