@@ -14,7 +14,7 @@ script. If not, go to https://github.com/helderco/dh-auto-backup for
 more information.
 """
 
-__version__ = '0.4'
+__version__ = '0.4.1'
 
 __copyright__ = """
 Copyright (c) 2012 Helder Correia <helder.mc@gmail.com>
@@ -418,6 +418,9 @@ class Config(SafeConfigParser, OptionParser):
         if value is not None:
             if not isinstance(value, str):
                 value = str(value)
+
+            if not self.has_section(section):
+                self.add_section(section)
 
             SafeConfigParser.set(self, section, option, value)
 
