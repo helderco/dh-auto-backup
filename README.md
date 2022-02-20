@@ -1,4 +1,4 @@
-# Dreamhost Auto Backup
+# Dreamhost Auto Backup (DEPRECATED)
 
 Good backup systems need to be automatic. I needed a simple script to backup all mysql databases and user files on my Dreamhost account. This is my attempt to automate this process as much as possible.
 
